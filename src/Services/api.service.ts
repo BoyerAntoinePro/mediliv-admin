@@ -1,6 +1,6 @@
 import { auth } from '../Config/firebase.config';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://mediliv-backend-g4tsg1y37-boyerantoinepros-projects.vercel.app';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export async function adminFetch(path: string, options?: RequestInit): Promise<Response> {
   const token = await auth.currentUser?.getIdToken();
