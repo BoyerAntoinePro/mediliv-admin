@@ -1,7 +1,4 @@
-import type { User } from 'firebase/auth';
-
 export interface AuthContextType {
-  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;

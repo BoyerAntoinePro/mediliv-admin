@@ -1,30 +1,30 @@
 import { createContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import type { User } from 'firebase/auth';
-import { auth } from '../Config/firebase.config';
-import { signInWithEmail as authSignIn, signOut as authSignOut, getAuthErrorMessage } from '../Services/auth.service';
+import {
+  signInWithEmail as authSignIn,
+  signOut as authSignOut,
+  getAuthErrorMessage,
+  getStoredToken,
+} from '../Services/auth.service';
 import type { AuthContextType } from '../Types/auth.types';
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setIsLoading(false);
-    });
-    return unsubscribe;
+    setIsAuthenticated(getStoredToken() !== null);
+    setIsLoading(false);
   }, []);
 
   async function signInWithEmail(email: string, password: string): Promise<void> {
     setError(null);
     try {
       await authSignIn(email, password);
+      setIsAuthenticated(true);
     } catch (err) {
       const code = (err as { code?: string }).code ?? '';
       setError(getAuthErrorMessage(code));
@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut(): Promise<void> {
     await authSignOut();
+    setIsAuthenticated(false);
   }
 
   function clearError() {
@@ -41,17 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: user !== null,
-        isLoading,
-        error,
-        signInWithEmail,
-        signOut,
-        clearError,
-      }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, error, signInWithEmail, signOut, clearError }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,9 +1,9 @@
-import { auth } from '../Config/firebase.config';
+import { getStoredToken } from './auth.service';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export async function adminFetch(path: string, options?: RequestInit): Promise<Response> {
-  const token = await auth.currentUser?.getIdToken();
+  const token = getStoredToken();
 
   const response = await fetch(`${BACKEND_URL}${path}`, {
     ...options,
