@@ -127,14 +127,14 @@ export function PaymentsPage() {
     setDeleting(true);
     try {
       await deletePayment(deleteTarget);
+      setPayments((prev) => prev.filter((p) => p.id !== deleteTarget));
+      setDeleteTarget(null);
       notifications.show({
         title: 'Paiement supprimé',
         message: 'Le paiement a été supprimé.',
         color: 'accentGreen',
         icon: <IconCheck size={16} />,
       });
-      setDeleteTarget(null);
-      await fetchPayments();
     } catch (err) {
       notifications.show({
         title: 'Erreur',
@@ -151,13 +151,19 @@ export function PaymentsPage() {
     setMarkingPaidId(id);
     try {
       await markPaymentAsPaid(id);
+      setPayments((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, status: 'paid', paidAt: { _seconds: Math.floor(Date.now() / 1000), _nanoseconds: 0 } }
+            : p
+        )
+      );
       notifications.show({
         title: 'Paiement marqué comme payé',
         message: 'Le statut a été mis à jour.',
         color: 'accentGreen',
         icon: <IconCheck size={16} />,
       });
-      await fetchPayments();
     } catch (err) {
       notifications.show({
         title: 'Erreur',
