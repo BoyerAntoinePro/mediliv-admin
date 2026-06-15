@@ -67,7 +67,8 @@ createRoot(document.getElementById('root')!).render(
                 </ProtectedRoute>
               }
             >
-              <Route path="/" element={<PaymentsPage />} />
+              <Route index element={<Navigate to="/payments" replace />} />
+              <Route path="/payments" element={<PaymentsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

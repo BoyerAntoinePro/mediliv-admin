@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
   Card,
   Group,
   Loader,
+  Menu,
+  Modal,
+  Stack,
   Table,
   Text,
   Title,
@@ -14,21 +18,31 @@ import { notifications } from '@mantine/notifications';
 import {
   IconAlertCircle,
   IconCheck,
+  IconDotsVertical,
   IconRefresh,
   IconSend,
+  IconTrash,
 } from '@tabler/icons-react';
 import type { Payment } from '../../Types/payment.types';
-import { getPayments, processAllPayments, processPayment } from '../../Services/payments.service';
+import {
+  deletePayment,
+  getPayments,
+  markPaymentAsPaid,
+  processAllPayments,
+  processPayment,
+} from '../../Services/payments.service';
 
-function formatDate(value: string | undefined): string {
+function formatDate(value: { _seconds: number } | undefined): string {
   if (!value) return '—';
+  const date = new Date(value._seconds * 1000);
+  if (isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function formatAmount(amount: number): string {
@@ -41,6 +55,9 @@ export function PaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingAll, setProcessingAll] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
@@ -64,7 +81,7 @@ export function PaymentsPage() {
     try {
       await processPayment(id);
       notifications.show({
-        title: 'Paiement traité',
+        title: 'Paiement réglé',
         message: 'Le virement a été effectué avec succès.',
         color: 'accentGreen',
         icon: <IconCheck size={16} />,
@@ -88,7 +105,7 @@ export function PaymentsPage() {
       const result = await processAllPayments();
       notifications.show({
         title: 'Traitement terminé',
-        message: `${result.processed} traité(s), ${result.failed} échoué(s).`,
+        message: `${result.processed} réglé(s), ${result.failed} échoué(s).`,
         color: result.failed > 0 ? 'yellow' : 'accentGreen',
         icon: <IconCheck size={16} />,
       });
@@ -102,6 +119,54 @@ export function PaymentsPage() {
       });
     } finally {
       setProcessingAll(false);
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deletePayment(deleteTarget);
+      notifications.show({
+        title: 'Paiement supprimé',
+        message: 'Le paiement a été supprimé.',
+        color: 'accentGreen',
+        icon: <IconCheck size={16} />,
+      });
+      setDeleteTarget(null);
+      await fetchPayments();
+    } catch (err) {
+      notifications.show({
+        title: 'Erreur',
+        message: (err as Error).message,
+        color: 'red',
+        icon: <IconAlertCircle size={16} />,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleMarkAsPaid(id: string) {
+    setMarkingPaidId(id);
+    try {
+      await markPaymentAsPaid(id);
+      notifications.show({
+        title: 'Paiement marqué comme payé',
+        message: 'Le statut a été mis à jour.',
+        color: 'accentGreen',
+        icon: <IconCheck size={16} />,
+      });
+      await fetchPayments();
+    } catch (err) {
+      notifications.show({
+        title: 'Erreur',
+        message: (err as Error).message,
+        color: 'red',
+        icon: <IconAlertCircle size={16} />,
+      });
+    } finally {
+      setMarkingPaidId(null);
     }
   }
 
@@ -135,7 +200,7 @@ export function PaymentsPage() {
             loading={processingAll}
             disabled={pendingCount === 0}
           >
-            Traiter tous les pending
+            Régler toutes les commandes en attente
           </Button>
         </Group>
       </Group>
@@ -167,6 +232,7 @@ export function PaymentsPage() {
                 <Table.Th>Payé le</Table.Th>
                 <Table.Th>Statut</Table.Th>
                 <Table.Th>Action</Table.Th>
+                <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -175,13 +241,19 @@ export function PaymentsPage() {
                   <Table.Td>{formatDate(payment.createdAt)}</Table.Td>
                   <Table.Td>{payment.orderId}</Table.Td>
                   <Table.Td>
-                    <Badge
-                      variant="light"
-                      color={payment.beneficiaryType === 'pharmacy' ? 'myColor' : 'blue'}
-                      size="sm"
-                    >
-                      {payment.beneficiaryType === 'pharmacy' ? 'Pharmacie' : 'Livreur'}
-                    </Badge>
+                    <Stack gap={2}>
+                      <Text size="sm" fw={500}>{payment.beneficiaryName}</Text>
+                      <Group gap="xs">
+                        <Badge
+                          variant="light"
+                          color={payment.beneficiaryType === 'pharmacy' ? 'myColor' : 'blue'}
+                          size="xs"
+                        >
+                          {payment.beneficiaryType === 'pharmacy' ? 'Pharmacie' : 'Livreur'}
+                        </Badge>
+                        <Text size="xs" c="dimmed">{payment.beneficiaryEmail}</Text>
+                      </Group>
+                    </Stack>
                   </Table.Td>
                   <Table.Td>{formatAmount(payment.amount)}</Table.Td>
                   <Table.Td>{formatDate(payment.paymentDate)}</Table.Td>
@@ -204,9 +276,34 @@ export function PaymentsPage() {
                         loading={processingId === payment.id}
                         onClick={() => { void handleProcessOne(payment.id); }}
                       >
-                        Traiter
+                        Régler
                       </Button>
                     )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Menu shadow="md" position="bottom-end" withinPortal>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" color="gray">
+                          <IconDotsVertical size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={<IconCheck size={14} />}
+                          disabled={payment.status === 'paid' || markingPaidId === payment.id}
+                          onClick={() => { void handleMarkAsPaid(payment.id); }}
+                        >
+                          Marquer comme payé
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconTrash size={14} />}
+                          color="red"
+                          onClick={() => setDeleteTarget(payment.id)}
+                        >
+                          Supprimer
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -214,6 +311,24 @@ export function PaymentsPage() {
           </Table>
         )}
       </Card>
+
+      <Modal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Supprimer le paiement"
+        centered
+        size="sm"
+      >
+        <Text mb="lg">Cette action est irréversible. Confirmer la suppression ?</Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setDeleteTarget(null)}>
+            Annuler
+          </Button>
+          <Button color="red" loading={deleting} onClick={() => { void handleDeleteConfirm(); }}>
+            Supprimer
+          </Button>
+        </Group>
+      </Modal>
     </>
   );
 }

@@ -14,3 +14,11 @@ export async function processAllPayments(): Promise<ProcessResult> {
   const response = await adminFetch('/admin/payments/process', { method: 'POST' });
   return response.json() as Promise<ProcessResult>;
 }
+
+export async function deletePayment(id: string): Promise<void> {
+  await adminFetch(`/admin/payments/${id}`, { method: 'DELETE' });
+}
+
+export async function markPaymentAsPaid(id: string): Promise<void> {
+  await adminFetch(`/admin/payments/${id}/mark-paid`, { method: 'POST' });
+}
