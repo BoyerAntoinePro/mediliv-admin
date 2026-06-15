@@ -273,7 +273,7 @@ export function PaymentsPage() {
                       <Group gap="xs">
                         <Badge
                           variant="light"
-                          color={payment.beneficiaryType === 'pharmacy' ? 'teal' : 'green'}
+                          color={payment.beneficiaryType === 'pharmacy' ? 'teal' : 'indigo'}
                           size="xs"
                         >
                           {payment.beneficiaryType === 'pharmacy' ? 'Pharmacie' : 'Livreur'}
