@@ -292,7 +292,7 @@ export function PaymentsPage() {
                     })()}
                   </Table.Td>
                   <Table.Td>
-                    {getPaymentStatus(payment).label === 'À payer' && (
+                    {payment.status === 'pending' && (
                       <Button
                         size="xs"
                         color="myColor"
