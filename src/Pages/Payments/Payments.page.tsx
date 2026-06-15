@@ -43,16 +43,22 @@ function toDate(value: unknown): Date | null {
   return null;
 }
 
-function formatDate(value: unknown): string {
+function formatDate(value: unknown, dateOnly = false): string {
   const date = toDate(value);
   if (!date || isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    ...(!dateOnly && { hour: '2-digit', minute: '2-digit' }),
   }).format(date);
+}
+
+function getPaymentStatus(payment: Payment): { label: string; color: string } {
+  if (payment.status === 'paid') return { label: 'Payé', color: 'accentGreen' };
+  const paymentDate = toDate(payment.paymentDate);
+  if (paymentDate && paymentDate <= new Date()) return { label: 'À payer', color: 'red' };
+  return { label: 'À venir', color: 'yellow' };
 }
 
 function formatAmount(amount: number): string {
@@ -186,16 +192,21 @@ export function PaymentsPage() {
     }
   }
 
-  const pendingCount = payments.filter((p) => p.status === 'pending').length;
+  const now = new Date();
+  const overdueCount = payments.filter((p) => {
+    if (p.status !== 'pending') return false;
+    const paymentDate = toDate(p.paymentDate);
+    return paymentDate !== null && paymentDate <= now;
+  }).length;
 
   return (
     <>
       <Group justify="space-between" mb="md" align="center">
         <Group gap="sm" align="center">
           <Title order={2}>Paiements</Title>
-          {pendingCount > 0 && (
-            <Badge color="myColor" size="lg" circle>
-              {pendingCount}
+          {overdueCount > 0 && (
+            <Badge color="red" size="lg" circle>
+              {overdueCount}
             </Badge>
           )}
         </Group>
@@ -214,7 +225,7 @@ export function PaymentsPage() {
             leftSection={<IconSend size={16} />}
             onClick={() => { void handleProcessAll(); }}
             loading={processingAll}
-            disabled={pendingCount === 0}
+            disabled={overdueCount === 0}
           >
             Régler toutes les commandes en attente
           </Button>
@@ -272,19 +283,16 @@ export function PaymentsPage() {
                     </Stack>
                   </Table.Td>
                   <Table.Td>{formatAmount(payment.amount)}</Table.Td>
-                  <Table.Td>{formatDate(payment.paymentDate)}</Table.Td>
+                  <Table.Td>{formatDate(payment.paymentDate, true)}</Table.Td>
                   <Table.Td>{formatDate(payment.paidAt)}</Table.Td>
                   <Table.Td>
-                    <Badge
-                      variant="light"
-                      color={payment.status === 'paid' ? 'accentGreen' : 'yellow'}
-                      size="sm"
-                    >
-                      {payment.status === 'paid' ? 'Payé' : 'En attente'}
-                    </Badge>
+                    {(() => {
+                      const { label, color } = getPaymentStatus(payment);
+                      return <Badge variant="light" color={color} size="sm">{label}</Badge>;
+                    })()}
                   </Table.Td>
                   <Table.Td>
-                    {payment.status === 'pending' && (
+                    {getPaymentStatus(payment).label === 'À payer' && (
                       <Button
                         size="xs"
                         color="myColor"
