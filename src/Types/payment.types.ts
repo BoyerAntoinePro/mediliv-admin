@@ -1,8 +1,3 @@
-export interface FirestoreTimestamp {
-  _seconds: number;
-  _nanoseconds: number;
-}
-
 export interface Payment {
   id: string;
   orderId: string;
@@ -12,9 +7,9 @@ export interface Payment {
   beneficiaryEmail: string;
   amount: number;
   status: 'pending' | 'paid';
-  paymentDate: FirestoreTimestamp;
-  createdAt: FirestoreTimestamp;
-  paidAt?: FirestoreTimestamp;
+  paymentDate: string;
+  createdAt: string;
+  paidAt?: string;
 }
 
 export interface ProcessResult {

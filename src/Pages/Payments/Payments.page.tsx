@@ -32,10 +32,20 @@ import {
   processPayment,
 } from '../../Services/payments.service';
 
-function formatDate(value: { _seconds: number } | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value._seconds * 1000);
-  if (isNaN(date.getTime())) return '—';
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (typeof value === 'string') return new Date(value);
+  if (typeof value === 'object') {
+    const ts = value as Record<string, number>;
+    const seconds = ts['seconds'] ?? ts['_seconds'];
+    if (seconds !== undefined) return new Date(seconds * 1000);
+  }
+  return null;
+}
+
+function formatDate(value: unknown): string {
+  const date = toDate(value);
+  if (!date || isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: '2-digit',
@@ -154,7 +164,7 @@ export function PaymentsPage() {
       setPayments((prev) =>
         prev.map((p) =>
           p.id === id
-            ? { ...p, status: 'paid', paidAt: { _seconds: Math.floor(Date.now() / 1000), _nanoseconds: 0 } }
+            ? { ...p, status: 'paid', paidAt: new Date().toISOString() }
             : p
         )
       );
